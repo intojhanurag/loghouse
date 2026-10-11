@@ -43,13 +43,13 @@ TTL toDateTime(Timestamp) + INTERVAL 7 DAY;
 CREATE MATERIALIZED VIEW logs_mv TO app_logs AS
 SELECT
     Timestamp,
-    if(ServiceName != '', ServiceName, JSONExtractString(Body, 'service'))    AS Service,
-    lower(trim(if(SeverityText != '', SeverityText, JSONExtractString(Body, 'level')))) AS Level,
-    JSONExtractString(Body, 'route')                                          AS Route,
-    toUInt16(JSONExtractUInt(Body, 'status'))                                 AS Status,
-    toUInt32(JSONExtractUInt(Body, 'duration_ms'))                            AS DurationMs,
-    if(TraceId != '', TraceId, JSONExtractString(Body, 'trace_id'))           AS TraceId,
-    if(isValidJSON(Body), JSONExtractString(Body, 'msg'), Body)               AS Message
+    ServiceName                                    AS Service,
+    lower(SeverityText)                            AS Level,
+    JSONExtractString(Body, 'route')               AS Route,
+    toUInt16(JSONExtractUInt(Body, 'status'))      AS Status,
+    toUInt32(JSONExtractUInt(Body, 'duration_ms')) AS DurationMs,
+    JSONExtractString(Body, 'trace_id')            AS TraceId,
+    JSONExtractString(Body, 'msg')                 AS Message
 FROM logs_raw;
 
 CREATE TABLE errors_per_minute

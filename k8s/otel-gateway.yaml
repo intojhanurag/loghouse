@@ -19,7 +19,6 @@ data:
     exporters:
       clickhouse:
         endpoint: tcp://clickhouse-loghouse:9000
-        database: default
         username: admin
         password: ${env:CLICKHOUSE_PASSWORD}
         logs_table_name: logs_raw

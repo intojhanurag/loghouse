@@ -12,7 +12,6 @@ processors:
 exporters:
   clickhouse:
     endpoint: tcp://clickhouse:9000
-    database: default
     username: admin
     password: admin
     logs_table_name: logs_raw

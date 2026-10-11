@@ -7,7 +7,6 @@ services:
     environment:
       CLICKHOUSE_USER: admin
       CLICKHOUSE_PASSWORD: admin
-      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
     ulimits:
       nofile:
         soft: 262144
@@ -19,7 +18,6 @@ services:
   generator:
     build: ./generator
     environment:
-      RATE: ${RATE:-50}
       INCIDENT: ${INCIDENT:-}
 
   otel-agent:

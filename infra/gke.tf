@@ -23,7 +23,6 @@ resource "google_container_node_pool" "spot" {
   node_config {
     spot         = true
     machine_type = "e2-standard-4"
-    disk_type    = "pd-balanced"
     disk_size_gb = 50
     oauth_scopes = ["https://www.googleapis.com/auth/cloud-platform"]
 

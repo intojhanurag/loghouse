@@ -17,8 +17,6 @@ spec:
         - name: generator
           image: asia-south1-docker.pkg.dev/loghouse-318a33/loghouse/generator:d78bbb28c5a0c4eeb37689bf3a1c1b74873dd940
           env:
-            - name: RATE
-              value: "50"
             - name: INCIDENT
               value: ""
           resources:

@@ -19,8 +19,6 @@ spec:
             name: clickhouse
             key: password
       admin/networks/ip: "::/0"
-      admin/access_management: 1
-      admin/profile: default
     clusters:
       - name: main
         layout:
