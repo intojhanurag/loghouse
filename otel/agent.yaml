@@ -1,0 +1,47 @@
+receivers:
+  filelog:
+    include: [/var/lib/docker/containers/*/*-json.log]
+    start_at: end
+    operators:
+      - type: container
+        format: docker
+        add_metadata_from_filepath: false
+
+      - type: json_parser
+        if: 'body matches "^\\{"'
+        parse_from: body
+        parse_to: attributes
+
+      - type: severity_parser
+        if: 'attributes.level != nil'
+        parse_from: attributes.level
+
+processors:
+  filter/only_app_logs:
+    error_mode: ignore
+    logs:
+      log_record:
+        - 'attributes["service"] == nil'
+
+  transform/service_name:
+    error_mode: ignore
+    log_statements:
+      - context: log
+        statements:
+          - set(attributes["service.name"], attributes["service"])
+
+  groupbyattrs/service:
+    keys: [service.name]
+
+exporters:
+  otlp:
+    endpoint: otel-gateway:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    logs:
+      receivers: [filelog]
+      processors: [filter/only_app_logs, transform/service_name, groupbyattrs/service]
+      exporters: [otlp]

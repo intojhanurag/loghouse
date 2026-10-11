@@ -1,0 +1,64 @@
+services:
+  clickhouse:
+    image: clickhouse/clickhouse-server:25.8
+    ports:
+      - "8123:8123"
+      - "9000:9000"
+    environment:
+      CLICKHOUSE_USER: admin
+      CLICKHOUSE_PASSWORD: admin
+      CLICKHOUSE_DEFAULT_ACCESS_MANAGEMENT: 1
+    ulimits:
+      nofile:
+        soft: 262144
+        hard: 262144
+    volumes:
+      - ./sql:/docker-entrypoint-initdb.d
+      - ch_data:/var/lib/clickhouse
+
+  generator:
+    build: ./generator
+    environment:
+      RATE: ${RATE:-50}
+      INCIDENT: ${INCIDENT:-}
+
+  otel-agent:
+    image: otel/opentelemetry-collector-contrib:0.130.0
+    command: ["--config=/etc/otel/agent.yaml"]
+    user: "0"
+    volumes:
+      - ./otel/agent.yaml:/etc/otel/agent.yaml:ro
+      - /var/lib/docker/containers:/var/lib/docker/containers:ro
+    depends_on: [otel-gateway]
+
+  otel-gateway:
+    image: otel/opentelemetry-collector-contrib:0.130.0
+    command: ["--config=/etc/otel/gateway.yaml"]
+    volumes:
+      - ./otel/gateway.yaml:/etc/otel/gateway.yaml:ro
+    depends_on: [clickhouse]
+
+  hyperdx:
+    image: docker.hyperdx.io/hyperdx/hyperdx:2
+    ports:
+      - "8080:8080"
+      - "8000:8000"
+    environment:
+      FRONTEND_URL: http://localhost:8080
+      HYPERDX_APP_URL: http://localhost
+      HYPERDX_APP_PORT: 8080
+      HYPERDX_API_PORT: 8000
+      MONGO_URI: mongodb://mongo:27017/hyperdx
+      USAGE_STATS_ENABLED: "false"
+      DEFAULT_CONNECTIONS: '[{"name":"Loghouse","host":"http://clickhouse:8123","username":"admin","password":"admin"}]'
+      DEFAULT_SOURCES: '[{"name":"App Logs","kind":"log","connection":"Loghouse","from":{"databaseName":"default","tableName":"app_logs"},"timestampValueExpression":"Timestamp","displayedTimestampValueExpression":"Timestamp","defaultTableSelectExpression":"Timestamp,Service,Level,Route,Status,DurationMs,Message","implicitColumnExpression":"Message","bodyExpression":"Message","serviceNameExpression":"Service","severityTextExpression":"Level","traceIdExpression":"TraceId"}]'
+    depends_on: [mongo, clickhouse]
+
+  mongo:
+    image: mongo:5.0.32-focal
+    volumes:
+      - mongo_data:/data/db
+
+volumes:
+  ch_data:
+  mongo_data:

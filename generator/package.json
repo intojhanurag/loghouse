@@ -1,0 +1,9 @@
+{
+  "name": "log-generator",
+  "private": true,
+  "type": "module",
+  "devDependencies": {
+    "@types/node": "^24.0.0",
+    "typescript": "^5.9.0"
+  }
+}
