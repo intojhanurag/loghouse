@@ -1,0 +1,93 @@
+apiVersion: clickhouse.altinity.com/v1
+kind: ClickHouseInstallation
+metadata:
+  name: loghouse
+  namespace: loghouse
+spec:
+  defaults:
+    templates:
+      podTemplate: clickhouse
+      dataVolumeClaimTemplate: data
+  configuration:
+    zookeeper:
+      keeper:
+        name: keeper
+    users:
+      admin/password:
+        valueFrom:
+          secretKeyRef:
+            name: clickhouse
+            key: password
+      admin/networks/ip: "::/0"
+      admin/access_management: 1
+      admin/profile: default
+    clusters:
+      - name: main
+        layout:
+          shardsCount: 1
+          replicasCount: 2
+    files:
+      config.d/storage.xml: |
+        <clickhouse>
+          <storage_configuration>
+            <disks>
+              <gcs>
+                <type>s3</type>
+                <endpoint>https://storage.googleapis.com/loghouse-318a33-clickhouse-cold/data/</endpoint>
+                <access_key_id from_env="GCS_ACCESS_KEY_ID"/>
+                <secret_access_key from_env="GCS_SECRET_ACCESS_KEY"/>
+                <support_batch_delete>false</support_batch_delete>
+              </gcs>
+            </disks>
+            <policies>
+              <hot_cold>
+                <volumes>
+                  <hot>
+                    <disk>default</disk>
+                  </hot>
+                  <cold>
+                    <disk>gcs</disk>
+                  </cold>
+                </volumes>
+              </hot_cold>
+            </policies>
+          </storage_configuration>
+        </clickhouse>
+  templates:
+    podTemplates:
+      - name: clickhouse
+        spec:
+          affinity:
+            podAntiAffinity:
+              requiredDuringSchedulingIgnoredDuringExecution:
+                - topologyKey: topology.kubernetes.io/zone
+                  labelSelector:
+                    matchLabels:
+                      clickhouse.altinity.com/chi: loghouse
+          containers:
+            - name: clickhouse
+              image: clickhouse/clickhouse-server:25.8
+              env:
+                - name: GCS_ACCESS_KEY_ID
+                  valueFrom:
+                    secretKeyRef:
+                      name: clickhouse
+                      key: gcs-access-id
+                - name: GCS_SECRET_ACCESS_KEY
+                  valueFrom:
+                    secretKeyRef:
+                      name: clickhouse
+                      key: gcs-secret
+              resources:
+                requests:
+                  cpu: 500m
+                  memory: 2Gi
+                limits:
+                  memory: 6Gi
+    volumeClaimTemplates:
+      - name: data
+        spec:
+          accessModes: [ReadWriteOnce]
+          resources:
+            requests:
+              storage: 20Gi

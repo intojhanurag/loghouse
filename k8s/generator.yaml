@@ -1,0 +1,29 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: generator
+  namespace: loghouse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: generator
+  template:
+    metadata:
+      labels:
+        app: generator
+    spec:
+      containers:
+        - name: generator
+          image: asia-south1-docker.pkg.dev/loghouse-318a33/loghouse/generator:d78bbb28c5a0c4eeb37689bf3a1c1b74873dd940
+          env:
+            - name: RATE
+              value: "50"
+            - name: INCIDENT
+              value: ""
+          resources:
+            requests:
+              cpu: 50m
+              memory: 64Mi
+            limits:
+              memory: 256Mi

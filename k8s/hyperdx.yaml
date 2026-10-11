@@ -1,0 +1,113 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: mongo
+  namespace: loghouse
+spec:
+  serviceName: mongo
+  replicas: 1
+  selector:
+    matchLabels:
+      app: mongo
+  template:
+    metadata:
+      labels:
+        app: mongo
+    spec:
+      containers:
+        - name: mongo
+          image: mongo:5.0.32-focal
+          ports:
+            - containerPort: 27017
+          volumeMounts:
+            - name: data
+              mountPath: /data/db
+          resources:
+            requests:
+              cpu: 100m
+              memory: 256Mi
+            limits:
+              memory: 1Gi
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        accessModes: [ReadWriteOnce]
+        resources:
+          requests:
+            storage: 5Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: mongo
+  namespace: loghouse
+spec:
+  selector:
+    app: mongo
+  ports:
+    - port: 27017
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: hyperdx
+  namespace: loghouse
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: hyperdx
+  template:
+    metadata:
+      labels:
+        app: hyperdx
+    spec:
+      containers:
+        - name: hyperdx
+          image: docker.hyperdx.io/hyperdx/hyperdx:2
+          ports:
+            - containerPort: 8080
+            - containerPort: 8000
+          env:
+            - name: CLICKHOUSE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: clickhouse
+                  key: password
+            - name: FRONTEND_URL
+              value: http://localhost:8080
+            - name: HYPERDX_APP_URL
+              value: http://localhost
+            - name: HYPERDX_APP_PORT
+              value: "8080"
+            - name: HYPERDX_API_PORT
+              value: "8000"
+            - name: MONGO_URI
+              value: mongodb://mongo:27017/hyperdx
+            - name: USAGE_STATS_ENABLED
+              value: "false"
+            - name: DEFAULT_CONNECTIONS
+              value: '[{"name":"Loghouse","host":"http://clickhouse-loghouse:8123","username":"admin","password":"$(CLICKHOUSE_PASSWORD)"}]'
+            - name: DEFAULT_SOURCES
+              value: '[{"name":"App Logs","kind":"log","connection":"Loghouse","from":{"databaseName":"default","tableName":"app_logs"},"timestampValueExpression":"Timestamp","displayedTimestampValueExpression":"Timestamp","defaultTableSelectExpression":"Timestamp,Service,Level,Route,Status,DurationMs,Message","implicitColumnExpression":"Message","bodyExpression":"Message","serviceNameExpression":"Service","severityTextExpression":"Level","traceIdExpression":"TraceId"}]'
+          resources:
+            requests:
+              cpu: 200m
+              memory: 512Mi
+            limits:
+              memory: 2Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: hyperdx
+  namespace: loghouse
+spec:
+  selector:
+    app: hyperdx
+  ports:
+    - name: app
+      port: 8080
+    - name: api
+      port: 8000
